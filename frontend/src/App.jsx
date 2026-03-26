@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
 import Teachers from './pages/Teachers';
 import Attendance from './pages/Attendance';
+import Report from './pages/Report';
 import Profile from './pages/Profile';
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
                     <Route path="/students" element={<Students />} />
                     <Route path="/teachers" element={<Teachers />} />
                     <Route path="/attendance" element={<Attendance />} />
+                    <Route path="/report" element={<Report />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                   </Routes>

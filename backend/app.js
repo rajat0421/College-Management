@@ -6,6 +6,7 @@ const studentRoutes = require('./routes/student.routes');
 const teacherRoutes = require('./routes/teacher.routes');
 const attendanceRoutes = require('./routes/attendance.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
+const alertRoutes = require('./routes/alert.routes');
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use('/api/students', studentRoutes);
 app.use('/api/teachers', teacherRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/alerts', alertRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

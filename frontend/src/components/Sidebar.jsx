@@ -4,6 +4,7 @@ import {
   GraduationCap,
   Users,
   CalendarCheck,
+  FileBarChart,
   UserCircle,
   X,
 } from 'lucide-react';
@@ -13,6 +14,7 @@ const navItems = [
   { to: '/students', label: 'Students', icon: GraduationCap },
   { to: '/teachers', label: 'Teachers', icon: Users },
   { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
+  { to: '/report', label: 'Smart Report', icon: FileBarChart },
   { to: '/profile', label: 'Profile', icon: UserCircle },
 ];
 

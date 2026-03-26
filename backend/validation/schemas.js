@@ -10,6 +10,7 @@ const studentSchema = Joi.object({
   rollNumber: Joi.string().trim().allow(''),
   course: Joi.string().trim().required(),
   year: Joi.number().integer().min(1).max(6).required(),
+  parentEmail: Joi.string().email().allow('').trim(),
 });
 
 const teacherSchema = Joi.object({

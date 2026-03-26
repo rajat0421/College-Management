@@ -1,6 +1,7 @@
 const Student = require('../models/Student');
 const Teacher = require('../models/Teacher');
 const Attendance = require('../models/Attendance');
+const Alert = require('../models/Alert');
 
 exports.getStats = async (req, res) => {
   try {
@@ -9,17 +10,70 @@ exports.getStats = async (req, res) => {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
-    const [totalStudents, totalTeachers, todayAttendance] = await Promise.all([
-      Student.countDocuments({ collegeId, isActive: true }),
+    const students = await Student.find({ collegeId, isActive: true });
+    const studentIds = students.map((s) => s._id);
+
+    const [totalTeachers, todayAttendance, allRecords, recentAlerts] = await Promise.all([
       Teacher.countDocuments({ collegeId }),
       Attendance.find({ collegeId, date: today }),
+      Attendance.find({ collegeId, studentId: { $in: studentIds } }).sort({ date: -1 }),
+      Alert.find({ collegeId })
+        .sort({ sentAt: -1 })
+        .limit(5)
+        .populate('studentId', 'name rollNumber'),
     ]);
 
     const presentToday = todayAttendance.filter((a) => a.status === 'present').length;
     const absentToday = todayAttendance.filter((a) => a.status === 'absent').length;
 
+    const recordsByStudent = {};
+    allRecords.forEach((r) => {
+      const sid = r.studentId.toString();
+      if (!recordsByStudent[sid]) recordsByStudent[sid] = [];
+      recordsByStudent[sid].push(r);
+    });
+
+    let lowAttendanceCount = 0;
+    let consecutiveAbsentCount = 0;
+    const atRiskStudents = [];
+
+    students.forEach((student) => {
+      const records = recordsByStudent[student._id.toString()] || [];
+      const total = records.length;
+      if (total === 0) return;
+
+      const present = records.filter((r) => r.status === 'present').length;
+      const percentage = Math.round((present / total) * 100);
+
+      let consecutiveAbsent = 0;
+      for (const record of records) {
+        if (record.status === 'absent') consecutiveAbsent++;
+        else break;
+      }
+
+      const isLow = percentage < 75;
+      const isStreak = consecutiveAbsent >= 3;
+
+      if (isLow) lowAttendanceCount++;
+      if (isStreak) consecutiveAbsentCount++;
+
+      if (isLow || isStreak) {
+        atRiskStudents.push({
+          _id: student._id,
+          name: student.name,
+          rollNumber: student.rollNumber,
+          course: student.course,
+          percentage,
+          consecutiveAbsent,
+          flags: { lowAttendance: isLow, absentStreak: isStreak },
+        });
+      }
+    });
+
+    atRiskStudents.sort((a, b) => a.percentage - b.percentage);
+
     res.json({
-      totalStudents,
+      totalStudents: students.length,
       totalTeachers,
       todayAttendance: {
         present: presentToday,
@@ -27,6 +81,10 @@ exports.getStats = async (req, res) => {
         total: todayAttendance.length,
         marked: todayAttendance.length > 0,
       },
+      lowAttendanceCount,
+      consecutiveAbsentCount,
+      atRiskStudents: atRiskStudents.slice(0, 5),
+      recentAlerts,
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);

@@ -22,6 +22,11 @@ const studentSchema = new mongoose.Schema(
       min: 1,
       max: 6,
     },
+    parentEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
     collegeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'College',

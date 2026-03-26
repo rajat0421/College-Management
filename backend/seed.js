@@ -35,24 +35,9 @@ const seed = async () => {
       console.log('Admin password updated:', admin.email);
     }
 
-    let navya = await User.findOne({ email: 'navya@admic.com', collegeId: college._id });
-    if (!navya) {
-      navya = await User.create({
-        name: 'Navya',
-        email: 'navya@admic.com',
-        password: '@navya0415',
-        role: 'admin',
-        collegeId: college._id,
-      });
-      console.log('Created admin user:', navya.email);
-    } else {
-      console.log('Admin already exists:', navya.email);
-    }
-
     console.log('\n--- Seed Complete ---');
     console.log('Login with:');
     console.log('  1) admin@demo.com / Admin@Coll3ge#2026');
-    console.log('  2) navya@admic.com / @navya0415');
 
     await mongoose.disconnect();
   } catch (error) {

@@ -1,17 +1,4 @@
-const nodemailer = require('nodemailer');
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
 const fromName = process.env.ALERT_FROM_NAME || 'CollegeMS';
-const fromEmail = process.env.SMTP_USER;
 
 function buildLowAttendanceEmail(studentName, percentage) {
   return {
@@ -46,9 +33,12 @@ function buildConsecutiveAbsentEmail(studentName, days) {
 }
 
 async function sendAlertEmail(toEmail, studentName, type, extraData) {
-  if (!fromEmail) {
-    console.warn('SMTP_USER not configured — email skipped, alert still logged');
-    return { sent: false, reason: 'SMTP not configured' };
+  const emailApiUrl = process.env.EMAIL_API_URL;
+  const emailApiKey = process.env.EMAIL_API_KEY;
+
+  if (!emailApiUrl) {
+    console.warn('EMAIL_API_URL not configured — email skipped, alert still logged');
+    return { sent: false, reason: 'Email API not configured' };
   }
 
   let emailContent;
@@ -58,12 +48,24 @@ async function sendAlertEmail(toEmail, studentName, type, extraData) {
     emailContent = buildConsecutiveAbsentEmail(studentName, extraData.days);
   }
 
-  await transporter.sendMail({
-    from: `"${fromName}" <${fromEmail}>`,
-    to: toEmail,
-    subject: emailContent.subject,
-    html: emailContent.html,
+  const response = await fetch(emailApiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': emailApiKey || '',
+    },
+    body: JSON.stringify({
+      to: toEmail,
+      subject: emailContent.subject,
+      html: emailContent.html,
+    }),
   });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Email API failed');
+  }
 
   return { sent: true };
 }

@@ -55,7 +55,7 @@ exports.updateStudent = async (req, res) => {
     const student = await Student.findOneAndUpdate(
       { _id: req.params.id, collegeId: req.user.collegeId },
       req.body,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!student) {
@@ -74,7 +74,7 @@ exports.deleteStudent = async (req, res) => {
     const student = await Student.findOneAndUpdate(
       { _id: req.params.id, collegeId: req.user.collegeId },
       { isActive: false },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!student) {

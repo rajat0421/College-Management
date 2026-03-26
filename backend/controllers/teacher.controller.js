@@ -52,7 +52,7 @@ exports.updateTeacher = async (req, res) => {
     const teacher = await Teacher.findOneAndUpdate(
       { _id: req.params.id, collegeId: req.user.collegeId },
       req.body,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!teacher) {

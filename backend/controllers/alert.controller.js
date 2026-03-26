@@ -49,7 +49,7 @@ exports.sendAlert = async (req, res) => {
       ? `Attendance at ${percentage}%, below required 75%`
       : `Absent for ${consecutiveAbsent} consecutive days`;
 
-    await sendAlertEmail(student.parentEmail, student.name, type, extraData);
+    const emailResult = await sendAlertEmail(student.parentEmail, student.name, type, extraData);
 
     await Alert.create({
       studentId: student._id,
@@ -60,7 +60,11 @@ exports.sendAlert = async (req, res) => {
       sentBy: userId,
     });
 
-    res.json({ message: `Alert sent to ${student.parentEmail}` });
+    const statusMsg = emailResult.sent
+      ? `Alert emailed to ${student.parentEmail}`
+      : `Alert logged (email skipped — SMTP not configured)`;
+
+    res.json({ message: statusMsg, emailSent: emailResult.sent });
   } catch (error) {
     console.error('Send alert error:', error);
     res.status(500).json({ message: error.message || 'Failed to send alert' });

@@ -47,7 +47,8 @@ function buildConsecutiveAbsentEmail(studentName, days) {
 
 async function sendAlertEmail(toEmail, studentName, type, extraData) {
   if (!fromEmail) {
-    throw new Error('SMTP_USER not configured — cannot send emails');
+    console.warn('SMTP_USER not configured — email skipped, alert still logged');
+    return { sent: false, reason: 'SMTP not configured' };
   }
 
   let emailContent;
@@ -63,6 +64,8 @@ async function sendAlertEmail(toEmail, studentName, type, extraData) {
     subject: emailContent.subject,
     html: emailContent.html,
   });
+
+  return { sent: true };
 }
 
 module.exports = { sendAlertEmail };

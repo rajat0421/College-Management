@@ -15,7 +15,7 @@ export default function Report() {
     setLoading(true);
     try {
       const params = {};
-      if (course) params.course = course;
+      if (course) params.course = course.toUpperCase();
       if (year) params.year = year;
       const { data } = await api.get('/attendance/smart-report', { params });
       setReport(data);

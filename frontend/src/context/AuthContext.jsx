@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components -- context + provider in one module */
+/* eslint-disable react-hooks/set-state-in-effect -- hydrate session from localStorage on mount */
 import { createContext, useState, useEffect } from 'react';
 import api from '../services/api';
 

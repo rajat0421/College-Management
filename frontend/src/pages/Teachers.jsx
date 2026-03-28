@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Wand2 } from 'lucide-react';
 import api from '../services/api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
+import { generatePassword } from '../utils/password';
 
-const emptyForm = { name: '', subject: '' };
+const emptyForm = {
+  name: '',
+  email: '',
+  password: '',
+};
 
 export default function Teachers() {
   const [teachers, setTeachers] = useState([]);
@@ -14,6 +19,8 @@ export default function Teachers() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [pwdLength, setPwdLength] = useState(14);
+  const [pwdSpecial, setPwdSpecial] = useState(true);
 
   const fetchTeachers = async () => {
     try {
@@ -28,6 +35,7 @@ export default function Teachers() {
 
   useEffect(() => {
     fetchTeachers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   const openAdd = () => {
@@ -38,8 +46,19 @@ export default function Teachers() {
 
   const openEdit = (teacher) => {
     setEditing(teacher._id);
-    setForm({ name: teacher.name, subject: teacher.subject });
+    setForm({
+      name: teacher.name,
+      email: teacher.email || '',
+      password: '',
+    });
     setModalOpen(true);
+  };
+
+  const handleGeneratePassword = () => {
+    setForm((f) => ({
+      ...f,
+      password: generatePassword(pwdLength, pwdSpecial),
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -47,11 +66,27 @@ export default function Teachers() {
     setSubmitting(true);
     try {
       if (editing) {
-        await api.put(`/teachers/${editing}`, form);
+        const payload = {
+          name: form.name,
+          email: form.email,
+        };
+        if (form.password && form.password.length >= 6) {
+          payload.password = form.password;
+        }
+        await api.put(`/teachers/${editing}`, payload);
         toast.success('Teacher updated');
       } else {
-        await api.post('/teachers', form);
-        toast.success('Teacher added');
+        if (!form.password || form.password.length < 6) {
+          toast.error('Password must be at least 6 characters');
+          setSubmitting(false);
+          return;
+        }
+        await api.post('/teachers', {
+          name: form.name,
+          email: form.email,
+          password: form.password,
+        });
+        toast.success('Teacher added — welcome email sent if mail is configured');
       }
       setModalOpen(false);
       fetchTeachers();
@@ -81,6 +116,7 @@ export default function Teachers() {
           <p className="text-sm text-gray-500 mt-1">{teachers.length} total teachers</p>
         </div>
         <button
+          type="button"
           onClick={openAdd}
           className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
         >
@@ -105,7 +141,7 @@ export default function Teachers() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
           </div>
         ) : teachers.length === 0 ? (
           <div className="text-center py-12 text-gray-500 text-sm">
@@ -117,7 +153,7 @@ export default function Teachers() {
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
                   <th className="text-left py-3 px-4 font-medium text-gray-600">Name</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Subject</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">Login email</th>
                   <th className="text-right py-3 px-4 font-medium text-gray-600">Actions</th>
                 </tr>
               </thead>
@@ -125,16 +161,18 @@ export default function Teachers() {
                 {teachers.map((teacher) => (
                   <tr key={teacher._id} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-4 font-medium text-gray-900">{teacher.name}</td>
-                    <td className="py-3 px-4 text-gray-600">{teacher.subject}</td>
+                    <td className="py-3 px-4 text-gray-600">{teacher.email || '—'}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          type="button"
                           onClick={() => openEdit(teacher)}
                           className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
                         >
                           <Pencil size={16} />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDelete(teacher._id)}
                           className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                         >
@@ -167,14 +205,60 @@ export default function Teachers() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Login email</label>
             <input
-              type="text"
-              value={form.subject}
-              onChange={(e) => setForm({ ...form, subject: e.target.value })}
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
               required
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {editing ? 'New password (optional)' : 'Password'}
+            </label>
+            <div className="flex flex-wrap gap-2 items-end">
+              <input
+                type="text"
+                autoComplete="new-password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                required={!editing}
+                minLength={editing ? undefined : 6}
+                placeholder={editing ? 'Leave blank to keep current' : 'Min 6 characters'}
+                className="flex-1 min-w-[140px] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none font-mono"
+              />
+              <div className="flex flex-wrap gap-2 items-center">
+                <label className="flex items-center gap-1 text-xs text-gray-600">
+                  <span>Length</span>
+                  <input
+                    type="number"
+                    min={6}
+                    max={64}
+                    value={pwdLength}
+                    onChange={(e) => setPwdLength(Number(e.target.value))}
+                    className="w-14 px-2 py-1 border border-gray-300 rounded text-sm"
+                  />
+                </label>
+                <label className="flex items-center gap-1 text-xs text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={pwdSpecial}
+                    onChange={(e) => setPwdSpecial(e.target.checked)}
+                  />
+                  Special chars
+                </label>
+                <button
+                  type="button"
+                  onClick={handleGeneratePassword}
+                  className="inline-flex items-center gap-1 px-3 py-2 bg-violet-100 text-violet-800 rounded-lg text-xs font-medium hover:bg-violet-200"
+                >
+                  <Wand2 size={14} />
+                  Generate
+                </button>
+              </div>
+            </div>
           </div>
           <div className="flex gap-3 pt-2">
             <button

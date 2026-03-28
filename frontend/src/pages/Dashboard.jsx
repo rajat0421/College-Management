@@ -12,7 +12,6 @@ import {
   FileBarChart,
 } from 'lucide-react';
 import api from '../services/api';
-import toast from 'react-hot-toast';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -126,7 +125,10 @@ export default function Dashboard() {
                 <div className="flex items-center gap-3">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{student.name}</p>
-                    <p className="text-xs text-gray-500">{student.course}</p>
+                    <p className="text-xs text-gray-500">
+                      {student.branchName}
+                      {student.year != null ? ` · Year ${student.year}` : ''}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

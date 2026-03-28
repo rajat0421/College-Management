@@ -7,11 +7,6 @@ const teacherSchema = new mongoose.Schema(
       required: [true, 'Teacher name is required'],
       trim: true,
     },
-    subject: {
-      type: String,
-      required: [true, 'Subject is required'],
-      trim: true,
-    },
     collegeId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'College',
@@ -20,6 +15,7 @@ const teacherSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
+      required: false,
     },
   },
   { timestamps: true }

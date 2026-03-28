@@ -11,10 +11,10 @@ const studentSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    course: {
-      type: String,
-      required: [true, 'Course is required'],
-      trim: true,
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      required: [true, 'Branch is required'],
     },
     year: {
       type: Number,
@@ -22,7 +22,7 @@ const studentSchema = new mongoose.Schema(
       min: 1,
       max: 6,
     },
-    parentEmail: {
+    email: {
       type: String,
       trim: true,
       lowercase: true,
@@ -40,6 +40,6 @@ const studentSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-studentSchema.index({ collegeId: 1, course: 1, year: 1 });
+studentSchema.index({ collegeId: 1, branchId: 1, year: 1 });
 
 module.exports = mongoose.model('Student', studentSchema);

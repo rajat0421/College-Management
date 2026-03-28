@@ -1,26 +1,28 @@
 const Attendance = require('../models/Attendance');
 const Student = require('../models/Student');
+const { consecutiveAbsentCalendarDays } = require('../utils/attendanceStats');
 
 exports.getSmartReport = async (req, res) => {
   try {
     const { collegeId } = req.user;
-    const { course, year } = req.query;
+    const { branchId, year } = req.query;
 
     const studentFilter = { collegeId, isActive: true };
-    if (course) studentFilter.course = course;
+    if (branchId) studentFilter.branchId = branchId;
     if (year) studentFilter.year = Number(year);
 
-    const students = await Student.find(studentFilter).sort({ name: 1 });
+    const students = await Student.find(studentFilter).populate('branchId', 'name').sort({ name: 1 });
     if (students.length === 0) {
       return res.json([]);
     }
 
     const studentIds = students.map((s) => s._id);
 
-    const allRecords = await Attendance.find({
-      collegeId,
-      studentId: { $in: studentIds },
-    }).sort({ date: -1 });
+    const yearNum = year ? Number(year) : null;
+    const attendanceFilter = { collegeId, studentId: { $in: studentIds } };
+    if (yearNum) attendanceFilter.year = yearNum;
+
+    const allRecords = await Attendance.find(attendanceFilter).sort({ date: -1 });
 
     const recordsByStudent = {};
     allRecords.forEach((r) => {
@@ -30,20 +32,16 @@ exports.getSmartReport = async (req, res) => {
     });
 
     const report = students.map((student) => {
-      const records = recordsByStudent[student._id.toString()] || [];
+      let records = recordsByStudent[student._id.toString()] || [];
+      if (!yearNum) {
+        records = records.filter((r) => r.year === student.year);
+      }
       const total = records.length;
       const present = records.filter((r) => r.status === 'present').length;
       const absent = total - present;
       const percentage = total > 0 ? Math.round((present / total) * 100) : 100;
 
-      let consecutiveAbsent = 0;
-      for (const record of records) {
-        if (record.status === 'absent') {
-          consecutiveAbsent++;
-        } else {
-          break;
-        }
-      }
+      const consecutiveAbsent = consecutiveAbsentCalendarDays(records);
 
       const lowAttendance = total > 0 && percentage < 75;
       const absentStreak = consecutiveAbsent >= 3;
@@ -52,9 +50,9 @@ exports.getSmartReport = async (req, res) => {
         _id: student._id,
         name: student.name,
         rollNumber: student.rollNumber,
-        course: student.course,
+        branchName: student.branchId?.name || '—',
         year: student.year,
-        parentEmail: student.parentEmail,
+        email: student.email,
         present,
         absent,
         total,

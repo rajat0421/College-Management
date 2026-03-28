@@ -7,6 +7,8 @@ const teacherRoutes = require('./routes/teacher.routes');
 const attendanceRoutes = require('./routes/attendance.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const alertRoutes = require('./routes/alert.routes');
+const branchRoutes = require('./routes/branch.routes');
+const subjectRoutes = require('./routes/subject.routes');
 
 const app = express();
 
@@ -22,6 +24,8 @@ app.use('/api/teachers', teacherRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/alerts', alertRoutes);
+app.use('/api/branches', branchRoutes);
+app.use('/api/subjects', subjectRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

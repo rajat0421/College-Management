@@ -1,16 +1,17 @@
 const Student = require('../models/Student');
+const Branch = require('../models/Branch');
 
 exports.getStudents = async (req, res) => {
   try {
     const { collegeId } = req.user;
-    const { search, course, year } = req.query;
+    const { search, branchId, year } = req.query;
 
     const filter = { collegeId, isActive: true };
-    if (course) filter.course = course;
+    if (branchId) filter.branchId = branchId;
     if (year) filter.year = Number(year);
     if (search) filter.name = { $regex: search, $options: 'i' };
 
-    const students = await Student.find(filter).sort({ name: 1 });
+    const students = await Student.find(filter).populate('branchId', 'name').sort({ name: 1 });
     res.json(students);
   } catch (error) {
     console.error('Get students error:', error);
@@ -24,7 +25,7 @@ exports.getStudent = async (req, res) => {
       _id: req.params.id,
       collegeId: req.user.collegeId,
       isActive: true,
-    });
+    }).populate('branchId', 'name');
 
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
@@ -39,10 +40,19 @@ exports.getStudent = async (req, res) => {
 
 exports.createStudent = async (req, res) => {
   try {
+    const { collegeId } = req.user;
+    const { branchId } = req.body;
+
+    const branch = await Branch.findOne({ _id: branchId, collegeId });
+    if (!branch) {
+      return res.status(400).json({ message: 'Invalid branch' });
+    }
+
     const student = await Student.create({
       ...req.body,
-      collegeId: req.user.collegeId,
+      collegeId,
     });
+    await student.populate('branchId', 'name');
     res.status(201).json(student);
   } catch (error) {
     console.error('Create student error:', error);
@@ -52,11 +62,21 @@ exports.createStudent = async (req, res) => {
 
 exports.updateStudent = async (req, res) => {
   try {
+    const { collegeId } = req.user;
+    const { branchId } = req.body;
+
+    if (branchId) {
+      const branch = await Branch.findOne({ _id: branchId, collegeId });
+      if (!branch) {
+        return res.status(400).json({ message: 'Invalid branch' });
+      }
+    }
+
     const student = await Student.findOneAndUpdate(
-      { _id: req.params.id, collegeId: req.user.collegeId },
+      { _id: req.params.id, collegeId },
       req.body,
       { returnDocument: 'after', runValidators: true }
-    );
+    ).populate('branchId', 'name');
 
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });

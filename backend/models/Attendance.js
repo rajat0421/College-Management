@@ -7,6 +7,22 @@ const attendanceSchema = new mongoose.Schema(
       ref: 'Student',
       required: true,
     },
+    subjectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subject',
+      required: true,
+    },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      required: true,
+    },
+    year: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 6,
+    },
     date: {
       type: Date,
       required: true,
@@ -29,6 +45,9 @@ const attendanceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-attendanceSchema.index({ collegeId: 1, date: 1, studentId: 1 }, { unique: true });
+attendanceSchema.index(
+  { collegeId: 1, date: 1, studentId: 1, subjectId: 1, year: 1 },
+  { unique: true }
+);
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

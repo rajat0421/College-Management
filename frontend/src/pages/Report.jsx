@@ -5,17 +5,29 @@ import toast from 'react-hot-toast';
 
 export default function Report() {
   const [report, setReport] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [course, setCourse] = useState('');
+  const [branchId, setBranchId] = useState('');
   const [year, setYear] = useState('');
   const [sendingId, setSendingId] = useState(null);
   const [sendingBulk, setSendingBulk] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await api.get('/branches');
+        setBranches(data);
+      } catch {
+        toast.error('Failed to load branches');
+      }
+    })();
+  }, []);
 
   const fetchReport = async () => {
     setLoading(true);
     try {
       const params = {};
-      if (course) params.course = course.toUpperCase();
+      if (branchId) params.branchId = branchId;
       if (year) params.year = year;
       const { data } = await api.get('/attendance/smart-report', { params });
       setReport(data);
@@ -28,7 +40,8 @@ export default function Report() {
 
   useEffect(() => {
     fetchReport();
-  }, [course, year]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch when filters change
+  }, [branchId, year]);
 
   const flaggedStudents = report.filter(
     (s) => s.flags.lowAttendance || s.flags.absentStreak
@@ -49,9 +62,9 @@ export default function Report() {
   const sendBulkAlerts = async () => {
     if (flaggedStudents.length === 0) return;
 
-    const withEmail = flaggedStudents.filter((s) => s.parentEmail);
+    const withEmail = flaggedStudents.filter((s) => s.email);
     if (withEmail.length === 0) {
-      toast.error('No flagged students have parent emails set');
+      toast.error('No flagged students have an email set');
       return;
     }
 
@@ -81,6 +94,7 @@ export default function Report() {
         </div>
         {flaggedStudents.length > 0 && (
           <button
+            type="button"
             onClick={sendBulkAlerts}
             disabled={sendingBulk}
             className="flex items-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium disabled:opacity-50"
@@ -94,14 +108,19 @@ export default function Report() {
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
         <div className="flex flex-wrap gap-4">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Course</label>
-            <input
-              type="text"
-              value={course}
-              onChange={(e) => setCourse(e.target.value)}
-              placeholder="All courses"
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-            />
+            <label className="block text-xs font-medium text-gray-600 mb-1">Branch</label>
+            <select
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none min-w-[160px]"
+            >
+              <option value="">All branches</option>
+              {branches.map((b) => (
+                <option key={b._id} value={b._id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Year</label>
@@ -112,7 +131,9 @@ export default function Report() {
             >
               <option value="">All years</option>
               {[1, 2, 3, 4, 5, 6].map((y) => (
-                <option key={y} value={y}>Year {y}</option>
+                <option key={y} value={String(y)}>
+                  Year {y}
+                </option>
               ))}
             </select>
           </div>
@@ -121,7 +142,7 @@ export default function Report() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
         </div>
       ) : report.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500 text-sm">
@@ -135,7 +156,7 @@ export default function Report() {
                 <tr className="border-b border-gray-200 bg-gray-50">
                   <th className="text-left py-3 px-4 font-medium text-gray-600">Name</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-600">Roll No.</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Course</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">Branch</th>
                   <th className="text-center py-3 px-4 font-medium text-gray-600">Present</th>
                   <th className="text-center py-3 px-4 font-medium text-gray-600">Absent</th>
                   <th className="text-center py-3 px-4 font-medium text-gray-600">Attendance %</th>
@@ -154,9 +175,15 @@ export default function Report() {
                     >
                       <td className="py-3 px-4 font-medium text-gray-900">{student.name}</td>
                       <td className="py-3 px-4 text-gray-600">{student.rollNumber || '—'}</td>
-                      <td className="py-3 px-4 text-gray-600">{student.course} (Yr {student.year})</td>
-                      <td className="py-3 px-4 text-center text-emerald-600 font-medium">{student.present}</td>
-                      <td className="py-3 px-4 text-center text-red-600 font-medium">{student.absent}</td>
+                      <td className="py-3 px-4 text-gray-600">
+                        {student.branchName} (Yr {student.year})
+                      </td>
+                      <td className="py-3 px-4 text-center text-emerald-600 font-medium">
+                        {student.present}
+                      </td>
+                      <td className="py-3 px-4 text-center text-red-600 font-medium">
+                        {student.absent}
+                      </td>
                       <td className="py-3 px-4 text-center">
                         <span
                           className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
@@ -202,14 +229,15 @@ export default function Report() {
                       <td className="py-3 px-4 text-right">
                         {isFlagged && (
                           <button
+                            type="button"
                             onClick={() =>
                               sendAlert(
                                 student._id,
                                 student.flags.lowAttendance ? 'low_attendance' : 'consecutive_absent'
                               )
                             }
-                            disabled={sendingId === student._id || !student.parentEmail}
-                            title={!student.parentEmail ? 'No parent email set' : 'Send alert email'}
+                            disabled={sendingId === student._id || !student.email}
+                            title={!student.email ? 'No student email set' : 'Send alert email'}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                           >
                             {sendingId === student._id ? (

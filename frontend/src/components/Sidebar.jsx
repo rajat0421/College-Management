@@ -7,24 +7,37 @@ import {
   FileBarChart,
   UserCircle,
   X,
+  GitBranch,
+  BookOpen,
 } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 
-const navItems = [
+const baseNav = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/students', label: 'Students', icon: GraduationCap },
-  { to: '/teachers', label: 'Teachers', icon: Users },
   { to: '/attendance', label: 'Attendance', icon: CalendarCheck },
   { to: '/report', label: 'Smart Report', icon: FileBarChart },
   { to: '/profile', label: 'Profile', icon: UserCircle },
 ];
 
+const adminNav = [
+  { to: '/students', label: 'Students', icon: GraduationCap },
+  { to: '/teachers', label: 'Teachers', icon: Users },
+  { to: '/branches', label: 'Branches', icon: GitBranch },
+  { to: '/subjects', label: 'Subjects', icon: BookOpen },
+];
+
 export default function Sidebar({ open, onClose }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+  const navItems = isAdmin ? [...adminNav, ...baseNav] : baseNav;
+
   return (
     <>
       {open && (
         <div
           className="fixed inset-0 bg-black/30 z-40 lg:hidden"
           onClick={onClose}
+          aria-hidden
         />
       )}
 
@@ -35,7 +48,7 @@ export default function Sidebar({ open, onClose }) {
       >
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
           <h1 className="text-xl font-bold text-indigo-600">CollegeMS</h1>
-          <button onClick={onClose} className="lg:hidden text-gray-500 hover:text-gray-700">
+          <button type="button" onClick={onClose} className="lg:hidden text-gray-500 hover:text-gray-700">
             <X size={20} />
           </button>
         </div>

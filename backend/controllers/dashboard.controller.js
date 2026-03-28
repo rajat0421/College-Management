@@ -2,6 +2,7 @@ const Student = require('../models/Student');
 const Teacher = require('../models/Teacher');
 const Attendance = require('../models/Attendance');
 const Alert = require('../models/Alert');
+const { consecutiveAbsentCalendarDays } = require('../utils/attendanceStats');
 
 exports.getStats = async (req, res) => {
   try {
@@ -10,7 +11,7 @@ exports.getStats = async (req, res) => {
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
 
-    const students = await Student.find({ collegeId, isActive: true });
+    const students = await Student.find({ collegeId, isActive: true }).populate('branchId', 'name');
     const studentIds = students.map((s) => s._id);
 
     const [totalTeachers, todayAttendance, allRecords, recentAlerts] = await Promise.all([
@@ -38,18 +39,15 @@ exports.getStats = async (req, res) => {
     const atRiskStudents = [];
 
     students.forEach((student) => {
-      const records = recordsByStudent[student._id.toString()] || [];
+      const raw = recordsByStudent[student._id.toString()] || [];
+      const records = raw.filter((r) => r.year === student.year);
       const total = records.length;
       if (total === 0) return;
 
       const present = records.filter((r) => r.status === 'present').length;
       const percentage = Math.round((present / total) * 100);
 
-      let consecutiveAbsent = 0;
-      for (const record of records) {
-        if (record.status === 'absent') consecutiveAbsent++;
-        else break;
-      }
+      const consecutiveAbsent = consecutiveAbsentCalendarDays(records);
 
       const isLow = percentage < 75;
       const isStreak = consecutiveAbsent >= 3;
@@ -62,7 +60,8 @@ exports.getStats = async (req, res) => {
           _id: student._id,
           name: student.name,
           rollNumber: student.rollNumber,
-          course: student.course,
+          branchName: student.branchId?.name || '—',
+          year: student.year,
           percentage,
           consecutiveAbsent,
           flags: { lowAttendance: isLow, absentStreak: isStreak },

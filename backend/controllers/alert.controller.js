@@ -2,21 +2,22 @@ const Alert = require('../models/Alert');
 const Student = require('../models/Student');
 const Attendance = require('../models/Attendance');
 const { sendAlertEmail } = require('../services/email.service');
+const { consecutiveAbsentCalendarDays } = require('../utils/attendanceStats');
 
 async function getStudentAlertData(studentId, collegeId) {
   const student = await Student.findOne({ _id: studentId, collegeId, isActive: true });
   if (!student) return null;
 
-  const records = await Attendance.find({ studentId, collegeId }).sort({ date: -1 });
+  const records = await Attendance.find({
+    studentId,
+    collegeId,
+    year: student.year,
+  }).sort({ date: -1 });
   const total = records.length;
   const present = records.filter((r) => r.status === 'present').length;
   const percentage = total > 0 ? Math.round((present / total) * 100) : 100;
 
-  let consecutiveAbsent = 0;
-  for (const record of records) {
-    if (record.status === 'absent') consecutiveAbsent++;
-    else break;
-  }
+  const consecutiveAbsent = consecutiveAbsentCalendarDays(records);
 
   return { student, percentage, consecutiveAbsent };
 }
@@ -37,8 +38,8 @@ exports.sendAlert = async (req, res) => {
 
     const { student, percentage, consecutiveAbsent } = data;
 
-    if (!student.parentEmail) {
-      return res.status(400).json({ message: 'No parent email set for this student' });
+    if (!student.email) {
+      return res.status(400).json({ message: 'No student email set for this student' });
     }
 
     const extraData = type === 'low_attendance'
@@ -47,22 +48,22 @@ exports.sendAlert = async (req, res) => {
 
     const message = type === 'low_attendance'
       ? `Attendance at ${percentage}%, below required 75%`
-      : `Absent for ${consecutiveAbsent} consecutive days`;
+      : `Absent for ${consecutiveAbsent} consecutive calendar days`;
 
-    const emailResult = await sendAlertEmail(student.parentEmail, student.name, type, extraData);
+    const emailResult = await sendAlertEmail(student.email, student.name, type, extraData);
 
     await Alert.create({
       studentId: student._id,
       collegeId,
       type,
       message,
-      sentTo: student.parentEmail,
+      sentTo: student.email,
       sentBy: userId,
     });
 
     const statusMsg = emailResult.sent
-      ? `Alert emailed to ${student.parentEmail}`
-      : `Alert logged (email skipped — SMTP not configured)`;
+      ? `Alert emailed to ${student.email}`
+      : `Alert logged (email skipped — email service not configured)`;
 
     res.json({ message: statusMsg, emailSent: emailResult.sent });
   } catch (error) {
@@ -87,7 +88,7 @@ exports.sendBulkAlerts = async (req, res) => {
     for (const studentId of studentIds) {
       try {
         const data = await getStudentAlertData(studentId, collegeId);
-        if (!data || !data.student.parentEmail) {
+        if (!data || !data.student.email) {
           skipped++;
           continue;
         }
@@ -100,16 +101,16 @@ exports.sendBulkAlerts = async (req, res) => {
 
         const message = type === 'low_attendance'
           ? `Attendance at ${percentage}%, below required 75%`
-          : `Absent for ${consecutiveAbsent} consecutive days`;
+          : `Absent for ${consecutiveAbsent} consecutive calendar days`;
 
-        await sendAlertEmail(student.parentEmail, student.name, type, extraData);
+        await sendAlertEmail(student.email, student.name, type, extraData);
 
         await Alert.create({
           studentId: student._id,
           collegeId,
           type,
           message,
-          sentTo: student.parentEmail,
+          sentTo: student.email,
           sentBy: userId,
         });
 
